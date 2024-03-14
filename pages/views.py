@@ -6,6 +6,9 @@ import random
 import urllib.parse
 import pymongo
 from pymongo import MongoClient
+import os
+
+print("------BASLADI-------")
 
 a= "12345"
 client = MongoClient("mongodb+srv://melekmbbal:"+a+"@datas.ws7ckaq.mongodb.net/?retryWrites=true&w=majority&appName=datas")
@@ -17,123 +20,212 @@ headers = {
     
 url = "https://dergipark.org.tr/tr/search?q=deep+learning&section=articles"
 
-data = {"name": "Melek", "surname": "Bal", "age": 21}
-collection.insert_one(data)
-
-
 datam = None
 
-def index(request):
-    global datam
+arama_url = urllib.parse.quote_plus("deep learning")
+
+url1 = f"https://dergipark.org.tr/tr/search?q={arama_url}"
+
+
+
+def get_data(url):
+    r = requests.get(url, headers=headers)
+    soup = BeautifulSoup(r.content, 'lxml')
+    return soup
+
+soup = get_data(url1)
+
+def find_links(soup):
+    links = soup.find_all('h5', class_='card-title')
+    link_result = []
+    for link in links[:10]:
+        link_result.append(link.a['href'])
+        
+    return link_result
+
+links = find_links(soup)
+
+def get_title(soup):
+    titles = soup.find_all('h5', class_='card-title')
+    title_result = []
+    for title in titles[:10]:  
+        title_result.append(title.a.text.strip())
+        
+    return title_result
+        
+def get_authours(soup):
+    authors_result = []    
+    for i in range(len(find_links(soup))):
+        soup1 = get_data(find_links(soup)[i]) 
+        authors = soup1.find_all('p', class_='article-authors') 
+        for a in authors[:1]:  
+            authors_result.append(' '.join(a.text.strip().split()))
+            
+    return authors_result
+                
+def get_dates(soup):   
+    dates = soup.find_all('small', class_='article-meta')   
+    date_result = []
+    for date in dates[:20]:
+        text = date.get_text(strip=True)
+        if '(' in text and ')' in text:
+            year = text[text.find('(') + 1: text.find(')')]
+            date_result.append(year)
+            
+    return date_result
+            
+def get_types(soup):    
+    type = soup.find_all('span', class_='badge badge-secondary')
+    type_result = []
+    for t in type[:10]:
+        type_result.append(t.text.strip())
+        
+    return type_result
+
+def get_publishers(soup):    
+    publisher_result = []  
+    for i in range(len(find_links(soup))):
+        soup1 = get_data(find_links(soup)[i]) 
+        publisher = soup1.find_all('h1', id='journal-title') 
+        for p in publisher[:10]:  
+            publisher_result.append(p.text.strip())  
+            
+    return publisher_result
+
+def get_keywords(soup):
+    keywords_result = []    
+    for i in range(len(find_links(soup))):
+        soup1 = get_data(find_links(soup)[i]) 
+        keywords = soup1.find_all('div', class_='article-keywords data-section')
+        for k in keywords[:9]:  
+            if k.p:
+                keywords_result.append(k.p.text.strip()) 
+                
+    return keywords_result
+
+def get_sums(soup):
+    sums_result = []    
+    for i in range(len(find_links(soup))):
+        soup1 = get_data(find_links(soup)[i]) 
+        sums = soup1.find_all('div', class_='article-abstract data-section') 
+        for a in sums:  
+            summary = a.p.text.strip()
+            if summary:  # Boş özetlerin eklenmemesi için kontrol
+                sums_result.append(summary)
+                
+
+    if len(sums_result) < 10:
+            i = len(sums_result)
+            for i in range(10):
+                sums_result.append("Özet bulunamadı")
+                
+            
+    return sums_result
+            
+def get_id():
+    id = []
+    for _ in range(10):
+        rastgele_sayi = random.randint(1, 999999)        
+        while rastgele_sayi in id:
+            rastgele_sayi = random.randint(1, 999999)
+        id.append(rastgele_sayi)
     
+    return id
+
+def pdf_links(soup):
+        pdf_links_result = []
+        for i in range(len(find_links(soup))):
+                soup1 = get_data(find_links(soup)[i])
+                links = soup1.find_all('div', id='article-toolbar')
+                
+                for link in links[:10]:
+                        pdf_links_result.append("https://dergipark.org.tr"+link.a['href'])
+                        
+        return pdf_links_result
+            
+pdf_url = pdf_links(soup)
+def save_datas():
+        for i in range(10):
+                data = {
+                "id": get_id()[i],
+                "title": get_title(soup)[i],
+                "author": get_authours(soup)[i],
+                "date": get_dates(soup)[i],
+                "type": get_types(soup)[i],
+                "publisher": get_publishers(soup)[i],
+                "keyword": get_keywords(soup)[i],
+                "summary": get_sums(soup)[i]
+                }
+                collection.insert_one(data)
+                print(i+1, ". data saved to MongoDB")
+
+def download_pdf(pdf_url):
+        for i in range(len(pdf_url)):
+                save_path = r"C:\Users\90546\OneDrive\Masaüstü\Yazlab\pdf_indir\pdf" + str(i) + ".pdf"
+                try:
+                        response = requests.get(pdf_url[i])
+                        # HTTP isteği başarılı mı diye kontrol edelim
+                        if response.status_code == 200:
+                        # Dosyayı binary modda yazıp indirelim
+                                with open(save_path, 'wb') as pdf_file:
+                                        pdf_file.write(response.content)
+                                print("PDF başarıyla indirildi.")
+                        else:
+                                print(f"HTTP hatası: {response.status_code}")
+                except Exception as e:
+                        print(f"Hata: {e}")
+
+def pull_datas():
+        # Veritabanından verileri çekmek için bir sorgu yapın
+        cursor = collection.find({})
+
+        # Her bir veri tipi için boş diziler oluşturun
+        id_list = []
+        title_list = []
+        author_list = []
+        date_list = []
+        type_list = []
+        publisher_list = []
+        keyword_list = []
+        summary_list = []
+
+        # Verileri döngüyle çekip ilgili dizilere ekleyin
+        for document in cursor:
+                id_list.append(document["id"])
+                title_list.append(document["title"])
+                author_list.append(document["author"])
+                date_list.append(document["date"])
+                type_list.append(document["type"])
+                publisher_list.append(document["publisher"])
+                keyword_list.append(document["keyword"])
+                summary_list.append(document["summary"])
+                
+        zip_list = zip(id_list, title_list, author_list, date_list, type_list, publisher_list, keyword_list, summary_list)
+                
+        return zip_list
+
+
+def your_view(request):
+    zip_list = pull_datas()
+    context = {
+                'zip_list': zip_list
+        }
+
+    print (pull_datas())
+
     if request.method=='POST':
         data=request.POST.get('search')
-        datam = data
+        
         return render(request, 'pages/index.html',{'data':data})
         
-    return render(request, 'pages/index.html')
-print ("helloo melekcim")
-print (datam)
-
-if(datam != None):
-    arama_url = urllib.parse.quote_plus(datam)
-
-    url1 = f"https://dergipark.org.tr/tr/search?q={arama_url}"
-
-    def get_data(url):
-        r = requests.get(url, headers=headers)
-        soup = BeautifulSoup(r.content, 'lxml')
-        return soup
-
-    soup = get_data(url1)
-
-    def find_links(soup):
-        links = soup.find_all('h5', class_='card-title')
-        link_result = []
-        for link in links[:10]:
-            link_result.append(link.a['href'])
-            
-        return link_result
-
-    def scrapping(soup):
-        soup = get_data(url1)
-        titles = soup.find_all('h5', class_='card-title')
-        title_result = []
-        for title in titles[:10]:  
-            title_result.append(title.a.text.strip())
-            
-    def get_authours(soup):
-        authors_result = []    
-        for i in range(len(find_links(soup))):
-            soup1 = get_data(find_links(soup)[i]) 
-            authors = soup1.find_all('p', class_='article-authors') 
-            for a in authors[:1]:  
-                authors_result.append(' '.join(a.text.strip().split()))
-                
-        return authors_result
-                    
-    def get_dates(soup):   
-        dates = soup.find_all('small', class_='article-meta')   
-        date_result = []
-        for date in dates[:20]:
-            text = date.get_text(strip=True)
-            if '(' in text and ')' in text:
-                year = text[text.find('(') + 1: text.find(')')]
-                date_result.append(year)
-                
-        return date_result
-                
-    def get_types(soup):    
-        type = soup.find_all('span', class_='badge badge-secondary')
-        type_result = []
-        for t in type[:10]:
-            type_result.append(t.text.strip())
-            
-        return type_result
-
-    def get_publishers(soup):    
-        publisher_result = []  
-        for i in range(len(find_links(soup))):
-            soup1 = get_data(find_links(soup)[i]) 
-            publisher = soup1.find_all('h1', id='journal-title') 
-            for p in publisher[:10]:  
-                publisher_result.append(p.text.strip())  
-                
-        return publisher_result
-
-    def get_keywords(soup):
-        keywords_result = []    
-        for i in range(len(find_links(soup))):
-            soup1 = get_data(find_links(soup)[i]) 
-            keywords = soup1.find_all('div', class_='article-keywords data-section')
-            for k in keywords[:9]:  
-                if k.p:
-                    keywords_result.append(k.p.text.strip()) 
-                    
-        return keywords_result[1:]
-
-    def get_sums(soup):
-        sums_result = []    
-        for i in range(len(find_links(soup))):
-            soup1 = get_data(find_links(soup)[i]) 
-            sums = soup1.find_all('div', class_='article-abstract data-section') 
-            for a in sums:  
-                summary = a.p.text.strip()
-                if summary:  # Boş özetlerin eklenmemesi için kontrol
-                    sums_result.append(summary)
-                
-        return sums_result
-                
-    def get_id():
-        id = []
-        for _ in range(10):
-            rastgele_sayi = random.randint(1, 999999)        
-            while rastgele_sayi in id:
-                rastgele_sayi = random.randint(1, 999999)
-            id.append(rastgele_sayi)
-        
-        
-        return id
+    return render(request, 'pages/index.html', context)
 
 
-    print(get_authours(soup)) 
+
+
+#save_datas()
+#collection.delete_many({}) 
+#download_pdf(links)
+#download_pdf(pdf_url)
+
+print("------BİTTİ-------")
