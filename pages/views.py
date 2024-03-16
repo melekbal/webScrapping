@@ -1,4 +1,4 @@
-from django.shortcuts import render
+from django.shortcuts import render, get_object_or_404
 from django.http import HttpResponse
 from bs4 import BeautifulSoup
 import requests
@@ -6,7 +6,7 @@ import random
 import urllib.parse
 import pymongo
 from pymongo import MongoClient
-import os
+
 
 print("------BASLADI-------")
 
@@ -20,7 +20,7 @@ headers = {
     
 url = "https://dergipark.org.tr/tr/search?q=deep+learning&section=articles"
 
-datam = None
+search_query = None
 
 arama_url = urllib.parse.quote_plus("deep learning")
 
@@ -144,17 +144,19 @@ def pdf_links(soup):
         return pdf_links_result
             
 pdf_url = pdf_links(soup)
-def save_datas():
+
+def save_datas(soup):
+        soup1 = soup
         for i in range(10):
                 data = {
                 "id": get_id()[i],
-                "title": get_title(soup)[i],
-                "author": get_authours(soup)[i],
-                "date": get_dates(soup)[i],
-                "type": get_types(soup)[i],
-                "publisher": get_publishers(soup)[i],
-                "keyword": get_keywords(soup)[i],
-                "summary": get_sums(soup)[i]
+                "title": get_title(soup1)[i],
+                "author": get_authours(soup1)[i],
+                "date": get_dates(soup1)[i],
+                "type": get_types(soup1)[i],
+                "publisher": get_publishers(soup1)[i],
+                "keyword": get_keywords(soup1)[i],
+                "summary": get_sums(soup1)[i]
                 }
                 collection.insert_one(data)
                 print(i+1, ". data saved to MongoDB")
@@ -176,10 +178,8 @@ def download_pdf(pdf_url):
                         print(f"Hata: {e}")
 
 def pull_datas():
-        # Veritabanından verileri çekmek için bir sorgu yapın
         cursor = collection.find({})
 
-        # Her bir veri tipi için boş diziler oluşturun
         id_list = []
         title_list = []
         author_list = []
@@ -189,7 +189,6 @@ def pull_datas():
         keyword_list = []
         summary_list = []
 
-        # Verileri döngüyle çekip ilgili dizilere ekleyin
         for document in cursor:
                 id_list.append(document["id"])
                 title_list.append(document["title"])
@@ -204,22 +203,57 @@ def pull_datas():
                 
         return zip_list
 
-
-def your_view(request):
+def index(request):
     zip_list = pull_datas()
     context = {
                 'zip_list': zip_list
         }
 
-    print (pull_datas())
-
-    if request.method=='POST':
-        data=request.POST.get('search')
-        
-        return render(request, 'pages/index.html',{'data':data})
+    #print (pull_datas())
         
     return render(request, 'pages/index.html', context)
 
+
+def search(request):
+    if request.method == 'POST':
+        search_input = request.POST.get('search_input', '')  # Formdan gelen veriyi al
+
+        arama_url1 = urllib.parse.quote_plus(search_input)
+        url2 = f"https://dergipark.org.tr/tr/search?q={arama_url1}"
+        soup2 = get_data(url2)
+        
+        collection.delete_many({}) 
+        save_datas(soup2)
+        pull_datas()
+
+        zip_list = pull_datas()
+        context = {
+                    'zip_list': zip_list
+            }
+        
+        return render(request, 'pages/search.html', context)
+    else:
+        return HttpResponse("HATA")  # İsteğin POST olmadığı durumu işle
+
+
+def detail(request):
+    title = request.GET.get('title', '')
+    author = request.GET.get('author', '')
+    date = request.GET.get('date', '')
+    type = request.GET.get('type', '')
+    publisher = request.GET.get('publisher', '')
+    keyword = request.GET.get('keyword', '')
+    summary = request.GET.get('summary', '')
+   
+    return render(request, 'pages/detail.html', {
+        'title': title,
+        'author': author,
+        'date': date,
+        'type': type,
+        'publisher': publisher,
+        'keyword': keyword,
+        'summary': summary
+    })
 
 
 

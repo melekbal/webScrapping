@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title }}</title>
+</head>
+<body>
+    <header>
+        <h1>{{ title }}</h1>
+    </header>
+    <nav>
+        <ul>
+            <li><a href="#tür">TÜR</a></li>
+            <li><a href="#tarih">YAYIMLANMA TARİHİ</a></li>
+            <li><a href="#yayıncı">YAYINCI</a></li>
+            <li><a href="#yazar">YAZARLAR</a></li>
+            <li><a href="#anahtar">ANAHTAR KELİMELER</a></li>
+            <li><a href="#özet">ÖZET</a></li>
+        </ul>
+    </nav>
+    <main>
+        <section id="tür">
+            <h2>Tür</h2>
+            <p>{{ type }}</p>
+        </section>
+        <section id="tarih">
+            <h2>Yayımlanma Tarihi</h2>
+            <p>{{ date }}</p>
+        </section>
+        <section id="yayıncı">
+            <h2>Yayıncı Adı</h2>
+            <p>{{ publisher }}</p>
+        </section>
+        <section id="yazar">
+            <h2>Yazarlar</h2>
+            <p>{{ author }}</p>
+        </section>
+        <section id="anahtar">
+            <h2>Anahtar Kelimeler</h2>
+            <p>{{ keyword }}</p>
+        </section>
+        <section id="özet">
+            <h2>Özet</h2>
+            <p>{{ summary }}</p>
+        </section>
+    </main>
+    <footer>
+        <p>Web Sayfası Tasarımı &copy; 2024</p>
+    </footer>
+</body>
+</html>

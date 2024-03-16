@@ -78,6 +78,7 @@
         border-radius: 5px; /* İç barların köşeleri */
         height: 32px; /* Yükseklik */
         font-weight:bold; /* Kalın font */
+        text-decoration: none;
       }
 
       .sub-bar2 {
@@ -102,22 +103,23 @@
 </head>
 <body>
   <div class="container">
-    <div class="search-header">
-      <div class="search-text"> OzMel Akademik  </div>
-      <div class="search-box">
-        <input type="text" class="search-input" style="width: 90%;" placeholder="Ara...">
-        <button id="search-button">Ara</button>
+    <form method="post" action="{% url 'search' %}">
+      {% csrf_token %}
+      <div class="search-header">
+        <div class="search-text"> OzMel Akademik  </div>
+        <div class="search-box">
+          <input type="text" class="search-input" name="search_input" style="width: 90%;" placeholder="Ara...">
+          <button type="submit" id="search-button">Ara</button>
+        </div>
       </div>
-    </div>
-    
-    {% for id, title, author, date, type, publisher, keywords, summary in zip_list %}
+    </form>
+    {% for id, title, author, date, type, publisher, keyword, summary in zip_list %}
       <div class="bar">
-        <div class="sub-bar1">{{ title }}</div>
+        <a href="{% url 'detail' %}?title={{ title }}&amp;author={{ author }}&amp;date={{ date }}&amp;type={{ type }}&amp;publisher={{ publisher }}&amp;keyword={{ keyword }}&amp;summary={{ summary }}" class="sub-bar1">{{ title }}</a>
         <div class="sub-bar2">{{ type }}</div>
         <div class="sub-bar3">{{ author }}</div>
       </div>
     {% endfor %}
-    
   </div>
 </body>
 </html>
