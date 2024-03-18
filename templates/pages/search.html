@@ -113,9 +113,9 @@
         </div>
       </div>
     </form>
-    {% for id, title, author, date, type, publisher, keyword, summary in zip_list %}
+    {% for id, title, author, date, type, publisher, keyword, summary, pdf_url in zip_list %}
       <div class="bar">
-        <a href="{% url 'detail' %}?title={{ title }}&amp;author={{ author }}&amp;date={{ date }}&amp;type={{ type }}&amp;publisher={{ publisher }}&amp;keyword={{ keyword }}&amp;summary={{ summary }}" class="sub-bar1">{{ title }}</a>
+        <a href="{% url 'detail' %}?title={{ title }}&amp;author={{ author }}&amp;date={{ date }}&amp;type={{ type }}&amp;publisher={{ publisher }}&amp;keyword={{ keyword }}&amp;summary={{ summary }}&amp;pdf_url={{ pdf_url }}" class="sub-bar1">{{ title }}</a>
         <div class="sub-bar2">{{ type }}</div>
         <div class="sub-bar3">{{ author }}</div>
       </div>

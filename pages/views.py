@@ -1,4 +1,4 @@
-from django.shortcuts import render, get_object_or_404
+from django.shortcuts import redirect, render
 from django.http import HttpResponse
 from bs4 import BeautifulSoup
 import requests
@@ -145,6 +145,8 @@ def pdf_links(soup):
             
 pdf_url = pdf_links(soup)
 
+print(pdf_url)
+
 def save_datas(soup):
         soup1 = soup
         for i in range(10):
@@ -156,14 +158,17 @@ def save_datas(soup):
                 "type": get_types(soup1)[i],
                 "publisher": get_publishers(soup1)[i],
                 "keyword": get_keywords(soup1)[i],
-                "summary": get_sums(soup1)[i]
+                "summary": get_sums(soup1)[i],
+                "pdf_url": pdf_links(soup1)[i]
                 }
                 collection.insert_one(data)
                 print(i+1, ". data saved to MongoDB")
+                
+title = get_title(soup)
 
 def download_pdf(pdf_url):
         for i in range(len(pdf_url)):
-                save_path = r"C:\Users\90546\OneDrive\Masaüstü\Yazlab\pdf_indir\pdf" + str(i) + ".pdf"
+                save_path = "C:/Users/90546/OneDrive/Masaüstü/Yazlab/pdf_indir/" + str(i) + ".pdf"  # Yolun ters eğik çizgilerle belirtilmesi
                 try:
                         response = requests.get(pdf_url[i])
                         # HTTP isteği başarılı mı diye kontrol edelim
@@ -188,6 +193,7 @@ def pull_datas():
         publisher_list = []
         keyword_list = []
         summary_list = []
+        pdf_url_list = []
 
         for document in cursor:
                 id_list.append(document["id"])
@@ -198,8 +204,9 @@ def pull_datas():
                 publisher_list.append(document["publisher"])
                 keyword_list.append(document["keyword"])
                 summary_list.append(document["summary"])
+                pdf_url_list.append(document["pdf_url"])
                 
-        zip_list = zip(id_list, title_list, author_list, date_list, type_list, publisher_list, keyword_list, summary_list)
+        zip_list = zip(id_list, title_list, author_list, date_list, type_list, publisher_list, keyword_list, summary_list, pdf_url_list)
                 
         return zip_list
 
@@ -225,6 +232,7 @@ def search(request):
         collection.delete_many({}) 
         save_datas(soup2)
         pull_datas()
+        download_pdf(pdf_url)
 
         zip_list = pull_datas()
         context = {
@@ -244,7 +252,11 @@ def detail(request):
     publisher = request.GET.get('publisher', '')
     keyword = request.GET.get('keyword', '')
     summary = request.GET.get('summary', '')
-   
+    pdf_url = request.GET.get('pdf_url', '')
+    
+    # Veriyi oturumda saklayın
+    request.session['pdf_url'] = pdf_url
+    
     return render(request, 'pages/detail.html', {
         'title': title,
         'author': author,
@@ -254,12 +266,16 @@ def detail(request):
         'keyword': keyword,
         'summary': summary
     })
+    
+def open_pdf(request):
+    # Oturumdan pdf_url'yi alın
+    pdf_url = request.session.get('pdf_url', '')
+    if pdf_url:
+        return redirect(pdf_url)
+    else:
+        # Eğer pdf_url oturumda yoksa başka bir yere yönlendirin veya hata mesajı gösterin
+        # Örneğin:
+        return HttpResponse("PDF URL not found in session.")
 
-
-
-#save_datas()
-#collection.delete_many({}) 
-#download_pdf(links)
-#download_pdf(pdf_url)
 
 print("------BİTTİ-------")
